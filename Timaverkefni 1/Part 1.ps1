@@ -14,8 +14,9 @@ New-NetIPAddress -InterfaceIndex $privateAdapterIndex -IPAddress 172.20.0.254 -P
 New-NetIPAddress -InterfaceIndex $privateAdapterIndex -IPAddress fd00::1
 
 
-Set-DnsClientServerAddress -InterfaceIndex 5 -ServerAddresses 172.20.0.254
+Set-DnsClientServerAddress -InterfaceIndex $privateAdapterIndex -ServerAddresses 172.20.0.254
 
 
 Install-WindowsFeature -Name "AD-Domain-Services" -IncludeManagementTools
 
+Restart-Computer
