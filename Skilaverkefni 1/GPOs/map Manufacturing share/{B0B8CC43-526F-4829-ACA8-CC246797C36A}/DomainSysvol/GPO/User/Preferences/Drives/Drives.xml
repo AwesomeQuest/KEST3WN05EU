@@ -1,0 +1,3 @@
+<?xml version="1.0" encoding="utf-8"?>
+<Drives clsid="{8FDDCC1A-0C3C-43cd-A6B4-71A6DF20DA8C}"><Drive clsid="{935D1B74-9CB8-4e3c-9914-7DD559B7A417}" name="T:" status="T:" image="2" userContext="1" bypassErrors="1" changed="2020-02-01 15:50:49" uid="{B695B989-4A53-4378-BB21-2ED9E3C262BE}"><Properties action="U" thisDrive="NOCHANGE" allDrives="NOCHANGE" userName="" path="\\DC1\SharedManufacturing" label="" persistent="1" useLetter="1" letter="T"/></Drive>
+</Drives>
