@@ -1,0 +1,25 @@
+function applyGPOToall(GPO){
+
+	make new GPO
+	link new gpo to all
+
+}
+
+function applyGPOtoSome(gpo, groups[]){
+	make new gpo
+	
+	link new GPO to some in groups
+}
+
+
+for(all gpos){
+	if(name has '&'){
+		groups = characters before &
+		applyGPOtoSome(GPO, groups)
+	}
+	else{
+		applyGPOToall(GPO)
+	}
+	
+	
+}
