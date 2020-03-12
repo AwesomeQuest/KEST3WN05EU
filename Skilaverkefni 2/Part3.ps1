@@ -20,67 +20,141 @@ New-NetNat -Name "ClientNAT" -InternalIPInterfaceAddressPrefix $InternalIPNetwor
 Install-WindowsFeature -name "WINS" –IncludeManagementTools
 
 
-
-$domain              = 'DC=torfi,DC=local'
-$domain2             = 'OU=company,'+$domain
-$preOU               = 'OU='
-$domain3             = ','+$domain2
-$domainIT            = $preOU+'Tölvudeild'+$domain3
-$domainManagement    = $preOU+'Rekstrardeild'+$domain3
-$domainHarpa         = $preOU+'Framkvæmdadeild'+$domain3
-$domainEngineering   = $preOU+'Framleiðsludeild'+$domain3
-
-New-ADOrganizationalUnit -Name "company" -Path $domain
-New-ADOrganizationalUnit -Name "Tölvudeild" -Path $domain2
-New-ADOrganizationalUnit -Name "Rekstrardeild" -Path $domain2
-New-ADOrganizationalUnit -Name "Framkvæmdadeild" -Path $domain2
-New-ADOrganizationalUnit -Name "Framleiðsludeild" -Path $domain2
-
-New-ADGroup -Name "Tölvudeild" -SamAccountName Tölvudeild -GroupCategory Security -GroupScope Universal -DisplayName "Tölvudeild" -Path $domainIT
-New-ADGroup -Name "Rekstrardeild" -SamAccountName Rekstrardeild -GroupCategory Security -GroupScope Universal -DisplayName "Rekstrardeild" -Path $domainManagement
-New-ADGroup -Name "Framkvæmdadeild" -SamAccountName Framkvæmdadeild -GroupCategory Security -GroupScope Universal -DisplayName "Framkvæmdadeild" -Path $domainHarpa
-New-ADGroup -Name "Framleiðsludeild" -SamAccountName Framleiðsludeild -GroupCategory Security -GroupScope Universal -DisplayName "Framleiðsludeild" -Path $domainEngineering
-
-
 Import-Module activedirectory
-$CSVpath = "C:\csv.csv"
-$ADUsers = Import-csv $CSVpath
-$typepasswordhere = "a100Hlusta" #you can type a set password if you do not want to be prompted
-#$typepasswordhere = Read-Host -Prompt "Type Base Password here"
+$CSVpath                   = "C:\csv.csv"
+#$typepasswordhere          = "" #you can type a set password if you do not want to be prompted
+$typepasswordhere          = Read-Host -Prompt "Type Base Password here"
+$company                   = 'company'
+$HomeDrive                 = 'H:'
+$HomeDriveRoot             = "ServerUsers"
+$everyoneGroupName         = "everyEmployee"
 
+$NameCSV                   = "Nafn"
+$FirstnameCSV              = "Fornafn"
+$LastnameCSV               = "Eftirnafn"
+$UsernameCSV               = "Notendanafn"
+$DepartmentCSV             = "Deild"
+$isSupervisorCSV           = "Stada"
+
+$ADUsers                   = Import-csv $CSVpath -Encoding UTF8
+$domain                    = ((Get-ADDomain).DNSRoot)
+$DC                        = ((Get-ADDomain).DistinguishedName)
+$domain2                   = 'OU='+$company+','+$DC
+$preDC                     = 'OU='
+$domain3                   = ','+$domain2
+$UserRoot                  = '\\DC1\' + $HomeDriveRoot + '\'
+$FolderRoot                = 'C:\' + $HomeDriveRoot + '\'
+$groupArray                = @()
+foreach ($UserGroup in $ADUsers){
+    $tempGroup = $UserGroup.$DepartmentCSV
+    if(!($groupArray -contains $tempGroup)){
+        $groupArray += $tempGroup
+    }
+}
+$tempString = ""
+for($i=0;$i -lt $groupArray.Length; $i++){
+    if($i -eq ($groupArray.Length - 1)){
+        $tempString += $groupArray[$i]
+    }
+    else
+    {
+        $tempString += $groupArray[$i] + ';'
+    }
+}
+New-ItemProperty -Path HKCU:\Environment -Name GROUPS -PropertyType ExpandString -Value $tempString
+
+
+#OU creation
+if (Get-ADOrganizationalUnit -Filter {Name -eq $company})
+{
+    Write-Warning "An OU with the name $company already exist in Active Directory."
+}
+else
+{
+    New-ADOrganizationalUnit -Name $company -Path $DC
+}
+
+if (Get-ADGroup -Filter {SamAccountName -eq $everyoneGroupName})
+{
+    Write-Warning "A group with the name $everyoneGroupName already exist in Active Directory."
+}
+else
+{
+    New-ADGroup -Name $everyoneGroupName -SamAccountName $everyoneGroupName -GroupCategory Security -GroupScope Universal -DisplayName $everyoneGroupName -Path $domain2
+}
+
+foreach ($group in $groupArray)
+{
+    $domainGroup = $preDC+$group+$domain3
+    $CN1          = 'CN='+$everyoneGroupName+$domain3
+
+    if (Get-ADOrganizationalUnit -Filter {Name -eq $group})
+	{
+		 Write-Warning "An OU with the name $group already exist in Active Directory."
+	}
+    else
+    {
+        New-ADOrganizationalUnit -Name $group -Path $domain2
+    }
+
+    #Group creation
+    if (Get-ADGroup -Filter {SamAccountName -eq $group})
+	{
+		 Write-Warning "A group with the name $group already exist in Active Directory."
+	}
+    else
+    {
+        New-ADGroup -Name $group -SamAccountName $group -GroupCategory Security -GroupScope Universal -DisplayName $group -Path $domainGroup
+        Add-ADGroupMember -Identity $CN1 -Members $group
+    }
+}
+
+$supervisor = ""
+#User creation
 foreach ($User in $ADUsers)
 {
-	$domain        = "torfi.local"
-    $DC            = ',OU=company,DC=torfi,DC=local'
-    $preDC         = 'OU='
-    $fullname      = $User.Nafn
-    $userprinciple = $User.Notendanafn + "@" + $domain
-	$Username 	   = $User.Notendanafn
-	$Firstname     = $User.Fornafn
-	$Lastname 	   = $User.Eftirnafn
-    $department    = $User.Deild
-	$desc		   = $User.Stada
-    $OU            = $preDC + $department + $DC
+    $fullname      = $User.$NameCSV
+    $Username 	   = $User.$UsernameCSV
+    $userprinciple = $Username + "@" + $domain
+	$Firstname     = $User.$FirstnameCSV
+	$Lastname 	   = $User.$LastnameCSV
+    $email         = $userprinciple
+    $department    = $User.$DepartmentCSV
+    $isSupervisor  = $User.$isSupervisorCSV
+    $OU            = $preDC+$department+$domain3
     $Password      = $typepasswordhere
-    $CN            = 'CN='+$department+','+$OU
+    $CN2           = 'CN='+$department+','+$OU
 
-	if (Get-ADUser -F {SamAccountName -eq $Username})
+	if (Get-ADUser -Filter {SamAccountName -eq $Username})
 	{
 		 Write-Warning "A user account with username $Username already exist in Active Directory."
 	}
-    elseif ($desc)
+    elseif ($isSupervisor)
     {
-        New-ADUser -SamAccountName $Username -UserPrincipalName $userprinciple -Name $fullname -GivenName $Firstname -Surname $Lastname -Enabled $True -DisplayName $fullname -Path $OU -Department $department -AccountPassword (convertto-securestring $Password -AsPlainText -Force) -ChangePasswordAtLogon $True
-		$supervisor = $Username
-	}
+        New-ADUser -SamAccountName $Username -UserPrincipalName $userprinciple -Name $fullname -GivenName $Firstname -Surname $Lastname -Enabled $True -DisplayName $fullname -Path $OU -EmailAddress $email -Department $department -AccountPassword (convertto-securestring $Password -AsPlainText -Force) -ChangePasswordAtLogon $True 
+        $supervisor = $Username
+    }
 	else
 	{
-        New-ADUser -SamAccountName $Username -UserPrincipalName $userprinciple -Name $fullname -GivenName $Firstname -Surname $Lastname -Enabled $True -DisplayName $fullname -Path $OU -Department $department -AccountPassword (convertto-securestring $Password -AsPlainText -Force) -ChangePasswordAtLogon $True -Manager $supervisor
+        New-ADUser -SamAccountName $Username -UserPrincipalName $userprinciple -Name $fullname -GivenName $Firstname -Surname $Lastname -Enabled $True -DisplayName $fullname -Path $OU -EmailAddress $email -Department $department -AccountPassword (convertto-securestring $Password -AsPlainText -Force) -ChangePasswordAtLogon $True -Manager $supervisor
 	}
-    Add-ADGroupMember -Identity $CN -Members $Username
+    Add-ADGroupMember -Identity $CN2 -Members $Username
+
+    #adds homefolder to users
+    $UserDirectory=$UserRoot+$Username
+    $HomeDirectory=$FolderRoot+$Username
+
+    if (Test-Path $HomeDirectory -PathType Container)
+    {
+        Write-Warning "A directory with the name $HomeDirectory already exist in Active Directory."
+    }
+    else
+    {
+        New-Item -path $HomeDirectory -type directory -force
+    }
+    Set-ADUser -Identity $Username -HomeDrive $HomeDrive -HomeDirectory $UserDirectory
+
 }
-
-
 
 
 New-Item -Path "c:\" -Name EmplyeeShare -ItemType "directory"
@@ -97,6 +171,11 @@ New-SmbShare -Name SharedIT -Path "c:\EmplyeeShare\Tölvudeild"  -FullAccess tor
 New-SmbShare -Name SharedManagement -Path "c:\EmplyeeShare\Rekstrardeild"  -FullAccess torfi.local\administrator
 New-SmbShare -Name SharedEngineering -Path "c:\EmplyeeShare\Framkvæmdadeild" -FullAccess torfi.local\administrator
 New-SmbShare -Name SharedHarpa -Path "c:\EmplyeeShare\Framleiðsludeild"  -FullAccess torfi.local\administrator
+
+
+#share install files
+
+New-SmbShare -Name intsallfire -Path "c:\installs"  -FullAccess torfi.local\administrator
 
 
 
@@ -124,74 +203,4 @@ Add-Printer -Name SharedPrinter -DriverName $printDriverName -PortName SharedPri
 
 
 
-
-
-
-
-
-
-
-$gpopath = "C:\GPOs"
-
-class GPO {
-    [string]$name
-    [string]$id
-    $path = $gpopath + "\" + $name
-
-}
-
-
-$employeeOU = "OU=company," + (Get-ADDomain).DistinguishedName
-
-$GROUPS = @()
-foreach($i in $env:EXPANDTHEDONG.Split(";")){$GROUPS += ,$i}
-
-$groupsOUs = @()
-foreach($i in $GROUPS){$groupsOUs += "OU=" + $i + "," + $employeeOU}
-
-function linkSome ([GPO]$GPO, $groups){
-
-    New-GPO -Name $GPO.name
-    Import-GPO -Path $GPO.path -BackupId $GPO.id -TargetName $GPO.name
-
-    foreach($group in $groups){
-        New-GPLink -Name $GPO.name -Target $groupsOUs[$group]
-        
-        echo $GPO.name + "has been applied to " + $groupsOUs[$group] 
-    }
-}
-function linkAll ([GPO]$GPO){
-
-    New-GPO -Name $GPO.name
-    Import-GPO -Path $GPO.path -BackupId $GPO.id -TargetName $GPO.name
-    New-GPLink -Name $GPO.name -Target $employeeOU
-
-    echo $GPO.name + "has been applied to all" 
-    
-}
-
-
-
-foreach($GPO in (Get-ChildItem $gpopath).Name){
-    if($GPO.Contains('&'))
-    {
-        $GPO1 = [GPO]::new()
-        $GPO1.id = (Get-ChildItem "$gpopath\$GPO").Name
-        $GPO1.name = $GPO
-
-        $gprStr = $GPO.Split('&')[0]
-        $grps = $gprStr.Split(' ')
-
-        linkSome $GPO1 $grps
-
-    }
-    else
-    {
-        $GPO1 = [GPO]::new()
-        $GPO1.id = (Get-ChildItem "$gpopath\$GPO").Name
-        $GPO1.name = $GPO
-
-        linkAll($GPO1)
-    }
-}
 
