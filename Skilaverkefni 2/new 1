@@ -8,7 +8,7 @@ function applyGPOToall(GPO){
 function applyGPOtoSome(gpo, groups[]){
 	make new gpo
 	
-	link new GPO to some in groups
+	link new GPO to all in groups[]
 }
 
 
