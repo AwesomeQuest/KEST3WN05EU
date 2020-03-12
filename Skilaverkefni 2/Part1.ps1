@@ -16,7 +16,7 @@ New-NetIPAddress -InterfaceIndex $privateAdapterIndex -IPAddress 2001:face:008b:
 
 Set-DnsClientServerAddress -InterfaceIndex $privateAdapterIndex -ServerAddresses 10.10.0.110
 
-New-ItemProperty -Path HKCU:\Environment -Name GROUPS -PropertyType MultiString -Value ("Tölvudeild", "Rekstrardeild", "Framkvæmdadeild", "Framleiðsludeild")
+New-ItemProperty -Path HKCU:\Environment -Name GROUPS -PropertyType ExpandString -Value "Tölvudeild;Rekstrardeild;Framkvæmdadeild;Framleiðsludeild"
 
 
 Install-WindowsFeature -Name "AD-Domain-Services" -IncludeManagementTools
