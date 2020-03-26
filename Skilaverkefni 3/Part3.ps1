@@ -18,8 +18,8 @@ Install-WindowsFeature -name "WINS" –IncludeManagementTools
 
 Import-Module activedirectory
 $CSVpath                   = "C:\csv.csv"
-#$typepasswordhere          = "" #you can type a set password if you do not want to be prompted
-$typepasswordhere          = Read-Host -Prompt "Type Base Password here"
+$typepasswordhere          = "a100Hlusta" #you can type a set password if you do not want to be prompted
+#$typepasswordhere          = Read-Host -Prompt "Type Base Password here"
 $company                   = 'company'
 $HomeDrive                 = 'H:'
 $HomeDriveRoot             = "ServerUsers"
@@ -176,32 +176,6 @@ New-SmbShare -Path "c:\EmplyeeShare" -Name SharedShare -FullAccess everyone
 #share install files
 
 New-SmbShare -Name intsallfire -Path "c:\installs"  -FullAccess torfi.local\administrator
-
-
-
-
-
-$printDriverName =  "Microsoft Print To PDF"
-
-
-Install-WindowsFeature Print-Services -IncludeManagementTools
-
-Add-PrinterDriver -Name  $printDriverName
-
-Add-PrinterPort -Name TölvudeildPrintPort -PrinterHostAddress 10.10.0.15
-Add-Printer -Name TölvudeildPrinter -DriverName $printDriverName -PortName TölvudeildPrintPort
-
-Add-PrinterPort -Name RekstrardeildPrintPort -PrinterHostAddress 10.10.0.16
-Add-Printer -Name RekstrardeildPrinter -DriverName $printDriverName -PortName RekstrardeildPrintPort
-
-Add-PrinterPort -Name FramkvæmdadeildPrintPort -PrinterHostAddress 10.10.0.17
-Add-Printer -Name FramkvæmdadeildPrinter -DriverName $printDriverName -PortName FramkvæmdadeildPrintPort
-
-Add-PrinterPort -Name FramleiðsludeildPrintPort -PrinterHostAddress 10.10.0.18
-Add-Printer -Name FramleiðsludeildPrinter -DriverName $printDriverName -PortName FramleiðsludeildPrintPort
-
-Add-PrinterPort -Name SharedPrintPort -PrinterHostAddress 10.10.0.19
-Add-Printer -Name SharedPrinter -DriverName $printDriverName -PortName SharedPrintPort
 
 
 
