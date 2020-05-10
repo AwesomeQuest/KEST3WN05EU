@@ -1,0 +1,1 @@
+Install-ADDSForest -DomainName qs-torfi.local -InstallDns
